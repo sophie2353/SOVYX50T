@@ -2,104 +2,125 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SOVYX</title>
+  <title>Sovyx</title>
   <style>
-    body { font-family: 'Segoe UI', Arial; background:#1a1a1a; color:#fff; padding:20px; }
-    section { margin-bottom:30px; padding:20px; background:rgba(255,255,255,0.05); border-radius:12px; }
-    h1,h2 { color:#3eb489; }
-    button,input,textarea { margin-top:10px; padding:10px; border-radius:6px; }
-    img.preview { max-width:200px; margin-top:10px; border-radius:8px; }
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    h1 { color: #4a4a4a; }
+    .section { margin-bottom: 30px; }
+    button { margin-top: 10px; padding: 10px 15px; cursor: pointer; }
+    input, textarea, select { display: block; margin-top: 10px; width: 100%; max-width: 400px; }
   </style>
 </head>
 <body>
 
-<!-- Iniciar sesión -->
-<section id="login">
-  <h1>Iniciar sesión con Instagram</h1>
-  <p>Conecta tu cuenta para publicar y activar segmentación.</p>
-  <button onclick="loginInstagram()">Conectar Instagram</button>
-  <div id="loginResult"></div>
-</section>
+  <!-- Bienvenida -->
+  <div class="section">
+    <h1>Bienvenido a Sovyx 🌐</h1>
+    <p>Sesión iniciada con <strong>owner</strong> y clientes disponibles.</p>
+    <label for="client">Selecciona cuenta:</label>
+    <select id="client">
+      <option value="">Owner (tu cuenta)</option>
+      <option value="client1">Cliente 1</option>
+      <option value="client2">Cliente 2</option>
+    </select>
+  </div>
 
-<!-- Publicar -->
-<section id="publicar">
-  <h2>Publicar en Instagram + Segmentación</h2>
-  <label>Caption:</label><br>
-  <textarea id="caption">Hola desde SOVYX 🚀</textarea><br>
-  <label>Seleccionar Imagen:</label><br>
-  <input type="file" id="imageInput" accept="image/*"><br>
-  <div id="preview"></div>
-  <button onclick="publishFlow()">Publicar y activar alcance</button>
-  <div id="publishResult"></div>
-</section>
+  <!-- Conectar con backend y token -->
+  <div class="section">
+    <h2>Conectar con Backend</h2>
+    <button onclick="refreshToken()">🔑 Refrescar Token</button>
+  </div>
 
-<!-- Estadísticas -->
-<section id="estadisticas">
-  <h2>Estadísticas</h2>
-  <button onclick="getInsights()">Ver Insights</button>
-  <div id="insightsResult"></div>
-</section>
+  <!-- Formulario con objetivo -->
+  <div class="section">
+    <h2>Objetivo de Ventas</h2>
+    <label for="objetivo">Selecciona objetivo:</label>
+    <select id="objetivo">
+      <option value="5">5 ventas</option>
+      <option value="10">10 ventas</option>
+      <option value="100">100 ventas</option>
+    </select>
+  </div>
+
+  <!-- Botones de acciones -->
+  <div class="section">
+    <button onclick="asignarAudienciaDelivery()">🎯 Asignar audiencia + delivery</button>
+    <button onclick="verEstadisticas()">📊 Ver estadísticas</button>
+    <button onclick="analizarObjetivo()">📈 Análisis según objetivo</button>
+  </div>
+
+  <!-- Resultados -->
+  <div class="section">
+    <h2>Resultados</h2>
+    <pre id="output"></pre>
+  </div>
 
 <script>
-const BASE_URL = "https://sovyx-ia.vercel.app/api";
+  const API_BASE = "https://sovyx-ia.vercel.app";
 
-// Vista previa de imagen
-const input = document.getElementById("imageInput");
-const preview = document.getElementById("preview");
-input.addEventListener("change", () => {
-  preview.innerHTML = "";
-  const file = input.files[0];
-  if (file) {
-    const reader = new FileReader();
-    reader.onload = e => {
-      const img = document.createElement("img");
-      img.src = e.target.result;
-      img.className = "preview";
-      preview.appendChild(img);
-    };
-    reader.readAsDataURL(file);
+  function getClientPath(endpoint) {
+    const client = document.getElementById("client").value;
+    return client ? `/api/${client}/${endpoint}` : `/api/${endpoint}`;
   }
-});
 
-// Login IG
-function loginInstagram() {
-  const clientId = "3413258278838360";
-  const redirectUri = "https://sovyx-ia.vercel.app/ig/callback";
-  const scope = "instagram_business_basic,instagram_business_content_publish,instagram_business_manage_insights";
-  const authUrl = `https://www.instagram.com/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&scope=${scope}&response_type=code`;
-  window.location.href = authUrl;
-}
+  async function refreshToken() {
+    const client = document.getElementById("client").value;
+    const path = client ? `/ig/${client}/refresh` : `/ig/refresh`;
+    const res = await fetch(`${API_BASE}${path}`);
+    const data = await res.json();
+    document.getElementById("output").textContent = JSON.stringify(data, null, 2);
+  }
 
-// Publicar + segmentación automática
-async function publishFlow() {
-  const caption = document.getElementById("caption").value;
-  const file = document.getElementById("imageInput").files[0];
-  if (!file) { alert("Selecciona una imagen"); return; }
+  async function asignarAudienciaDelivery() {
+    const client = document.getElementById("client").value || "owner";
+    const objetivo = document.getElementById("objetivo").value;
 
-  const formData = new FormData();
-  formData.append("caption", caption);
-  formData.append("image", file);
+    // 1) Construir audiencia
+    const audRes = await fetch(`${API_BASE}/api/${client}/audience/build`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ session_id: "sess_" + Date.now(), constraints: { objetivo } })
+    });
+    const audiencia = await audRes.json();
 
-  // 1. Publicar
-  const res = await fetch(`${BASE_URL}/instagram/publish`, { method:"POST", body:formData });
-  const data = await res.json();
-  document.getElementById("publishResult").innerHTML = `<p>Post publicado con ID: ${data.id}</p>`;
+    // 2) Asignar delivery
+    const delRes = await fetch(`${API_BASE}/api/${client}/delivery/assign`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        session_id: "sess_" + Date.now(),
+        audience_id: audiencia.audience_id,
+        post: `Objetivo: ${objetivo} ventas`,
+        window_hours: 24
+      })
+    });
+    const entrega = await delRes.json();
 
-  // 2. Mostrar resultados + cierre estimado (30%)
-  const cierreEstimado = Math.floor(delData.reach * 0.30);
-  document.getElementById("publishResult").innerHTML += `
-    <p>Segmentación activa: ${delData.reach} personas en LATAM+EUROPA (24h)</p>
-    <p>Cierre estimado: ${cierreEstimado} personas interesadas (30%)</p>
-  `;
-}
+    document.getElementById("output").textContent = 
+      "Audiencia:\n" + JSON.stringify(audiencia, null, 2) + 
+      "\n\nDelivery:\n" + JSON.stringify(entrega, null, 2);
+  }
 
-// Insights
-async function getInsights() {
-  const res = await fetch(`${BASE_URL}/instagram/insights/17895695668004550`);
-  const data = await res.json();
-  document.getElementById("insightsResult").innerHTML = `<p>Alcance real: ${data.reach} | Likes: ${data.likes}</p>`;
-}
+  async function verEstadisticas() {
+    const client = document.getElementById("client").value || "owner";
+    const mediaId = prompt("Ingresa el mediaId del post publicado:");
+    if (!mediaId) return;
+
+    const res = await fetch(`${API_BASE}/api/${client}/instagram/insights/${mediaId}`);
+    const data = await res.json();
+    document.getElementById("output").textContent = JSON.stringify(data, null, 2);
+  }
+
+  function analizarObjetivo() {
+    const objetivo = document.getElementById("objetivo").value;
+    let mensaje = "";
+
+    if (objetivo === "5") mensaje = "Meta pequeña: enfócate en segmentación precisa y cierres rápidos.";
+    if (objetivo === "10") mensaje = "Meta intermedia: necesitas buen alcance y optimizar el delivery.";
+    if (objetivo === "100") mensaje = "Meta grande: requiere máxima segmentación, constancia y análisis de métricas.";
+
+    document.getElementById("output").textContent = mensaje;
+  }
 </script>
 
 </body>
