@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SOVYX Web</title>
+  <title>SOVYX</title>
   <style>
     body { font-family: 'Segoe UI', Arial; background:#1a1a1a; color:#fff; padding:20px; }
     section { margin-bottom:30px; padding:20px; background:rgba(255,255,255,0.05); border-radius:12px; }
@@ -42,7 +42,7 @@
 </section>
 
 <script>
-const BASE_URL = "https://sovyxbackend-production.up.railway.app/api";
+const BASE_URL = "https://sovyx-ia.vercel.app/api";
 
 // Vista previa de imagen
 const input = document.getElementById("imageInput");
@@ -65,7 +65,7 @@ input.addEventListener("change", () => {
 // Login IG
 function loginInstagram() {
   const clientId = "3413258278838360";
-  const redirectUri = "https://sovyxbackend-production.up.railway.app/ig/callback";
+  const redirectUri = "https://sovyx-ia.vercel.app/ig/callback";
   const scope = "instagram_business_basic,instagram_business_content_publish,instagram_business_manage_insights";
   const authUrl = `https://www.instagram.com/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&scope=${scope}&response_type=code`;
   window.location.href = authUrl;
@@ -86,24 +86,7 @@ async function publishFlow() {
   const data = await res.json();
   document.getElementById("publishResult").innerHTML = `<p>Post publicado con ID: ${data.id}</p>`;
 
-  // 2. Construir audiencia (100k LATAM+EUROPA, high ticket)
-  const audRes = await fetch(`${BASE_URL}/audience/build`, {
-    method:"POST", headers:{ "Content-Type":"application/json" },
-    body: JSON.stringify({ 
-      session_id:"gh_session", 
-      constraints:{ size:100000, geo:["LATAM","EUROPA"], segment:"high_ticket", platform:"instagram" } 
-    })
-  });
-  const audData = await audRes.json();
-
-  // 3. Asignar delivery (24h)
-  const delRes = await fetch(`${BASE_URL}/delivery/assign`, {
-    method:"POST", headers:{ "Content-Type":"application/json" },
-    body: JSON.stringify({ session_id:"gh_session", audience_id:audData.id, window_hours:24 })
-  });
-  const delData = await delRes.json();
-
-  // 4. Mostrar resultados + cierre estimado (30%)
+  // 2. Mostrar resultados + cierre estimado (30%)
   const cierreEstimado = Math.floor(delData.reach * 0.30);
   document.getElementById("publishResult").innerHTML += `
     <p>Segmentación activa: ${delData.reach} personas en LATAM+EUROPA (24h)</p>
