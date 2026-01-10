@@ -65,11 +65,6 @@
 <script>
   const API_BASE = "https://sovyx-ia.vercel.app";
 
-  function getClientPath(endpoint) {
-    const client = document.getElementById("client").value;
-    return client ? `/api/${client}/${endpoint}` : `/api/${endpoint}`;
-  }
-
   async function refreshToken() {
     const client = document.getElementById("client").value;
     const path = client ? `/ig/${client}/refresh` : `/ig/refresh`;
