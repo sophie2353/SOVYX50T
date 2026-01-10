@@ -50,7 +50,7 @@
 
   <!-- Botones de acciones -->
   <div class="section">
-    <button onclick="asignarAudienciaDelivery()"> Asignar audiencia + delivery</button>
+    <button onclick="LanzarCampaña()">Mejorar</button>
     <button onclick="verEstadisticas()">Ver estadísticas</button>
     <button onclick="analizarObjetivo()">Análisis según objetivo</button>
   </div>
@@ -76,44 +76,32 @@
     const data = await res.json();
     document.getElementById("output").textContent = JSON.stringify(data, null, 2);
   }
+  
+async function lanzarCampaña(sessionId, postLink) {
+  // 1. Construir audiencia
+  const audRes = await fetch('/api/audience/build', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ session_id: sessionId })
+  });
+  const audiencia = await audRes.json();
 
-  async function asignarAudienciaDelivery() {
-    const client = document.getElementById("client").value || "owner";
-    const objetivo = document.getElementById("objetivo").value;
-    const postLink = document.getElementById("postLink").value;
+  // 2. Asignar delivery
+  const delivRes = await fetch('/api/delivery/assign', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      session_id: sessionId,
+      audience_id: audiencia.audience_id,
+      post: postLink,
+      window_hours: 24
+    })
+  });
+  const entrega = await delivRes.json();
 
-    if (!postLink) {
-      alert("Debes pegar el link del post activo");
-      return;
-    }
-
-    const sessionId = "sess_" + Date.now();
-
-    // 1) Construir audiencia
-    const audRes = await fetch(`${API_BASE}/api/${client}/audience/build`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ session_id: sessionId, constraints: { objetivo } })
-    });
-    const audiencia = await audRes.json();
-
-    // 2) Asignar delivery
-    const delRes = await fetch(`${API_BASE}/api/${client}/delivery/assign`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        session_id: sessionId,
-        audience_id: audiencia.audience_id,
-        post: postLink,
-        window_hours: 24
-      })
-    });
-    const entrega = await delRes.json();
-
-    document.getElementById("output").textContent = 
-      "Audiencia:\n" + JSON.stringify(audiencia, null, 2) + 
-      "\n\nDelivery:\n" + JSON.stringify(entrega, null, 2);
-  }
+  console.log("Audiencia creada:", audiencia);
+  console.log("Delivery asignado:", entrega);
+}
 
   async function verEstadisticas() {
     const client = document.getElementById("client").value || "owner";
