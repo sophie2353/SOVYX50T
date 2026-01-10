@@ -22,6 +22,7 @@
       <option value="">Owner (tu cuenta)</option>
       <option value="client1">Cliente 1</option>
       <option value="client2">Cliente 2</option>
+      <option value="client3">Cliente 3</option>
     </select>
   </div>
 
@@ -77,31 +78,47 @@
     document.getElementById("output").textContent = JSON.stringify(data, null, 2);
   }
   
-async function lanzarCampaña(sessionId, postLink) {
-  // 1. Construir audiencia
-  const audRes = await fetch('/api/audience/build', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ session_id: sessionId })
-  });
-  const audiencia = await audRes.json();
+  async function lanzarCampaña() {
+    const client = document.getElementById("client").value || "owner";
+    const sessionId = Date.now().toString(); // ID único por campaña
+    const postLink = document.getElementById("postLink").value;
 
-  // 2. Asignar delivery
-  const delivRes = await fetch('/api/delivery/assign', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      session_id: sessionId,
-      audience_id: audiencia.audience_id,
-      post: postLink,
-      window_hours: 24
-    })
-  });
-  const entrega = await delivRes.json();
+    if (!postLink) {
+      alert("Debes pegar el link del post de Instagram");
+      return;
+    }
 
-  console.log("Audiencia creada:", audiencia);
-  console.log("Delivery asignado:", entrega);
-}
+    try {
+      // 1. Construir audiencia
+      const audRes = await fetch(`${API_BASE}/api/${client}/audience/build`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: sessionId })
+      });
+      const audiencia = await audRes.json();
+
+      // 2. Asignar delivery
+      const delivRes = await fetch(`${API_BASE}/api/${client}/delivery/assign`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          session_id: sessionId,
+          audience_id: audiencia.audience_id,
+          post: postLink,
+          window_hours: 24
+        })
+      });
+      const entrega = await delivRes.json();
+
+      // Mostrar resultados en pantalla
+      document.getElementById("output").textContent =
+        JSON.stringify({ audiencia, entrega }, null, 2);
+
+    } catch (err) {
+      console.error("Error en lanzarCampaña:", err);
+      document.getElementById("output").textContent = "Error lanzando campaña";
+    }
+  }
 
   async function verEstadisticas() {
     const client = document.getElementById("client").value || "owner";
