@@ -9,6 +9,7 @@
     .section { margin-bottom: 30px; }
     button { margin-top: 10px; padding: 10px 15px; cursor: pointer; }
     input, textarea, select { display: block; margin-top: 10px; width: 100%; max-width: 400px; }
+    pre { background: #f4f4f4; padding: 10px; border: 1px solid #ccc; }
   </style>
 </head>
 <body>
@@ -51,9 +52,9 @@
 
   <!-- Botones de acciones -->
   <div class="section">
-    <button onclick="lanzarCampaña()">Mejorar</button>
-    <button onclick="verEstadisticas()">Ver estadísticas</button>
-    <button onclick="analizarObjetivo()">Análisis según objetivo</button>
+    <button onclick="asignarAudienciaDelivery()">🎯 Asignar audiencia + delivery</button>
+    <button onclick="verEstadisticas()">📊 Ver estadísticas</button>
+    <button onclick="analizarObjetivo()">📈 Análisis según objetivo</button>
   </div>
 
   <!-- Resultados -->
@@ -68,34 +69,40 @@
   async function refreshToken() {
     const client = document.getElementById("client").value;
     const path = client ? `/ig/${client}/refresh` : `/ig/refresh`;
-    const res = await fetch(`${API_BASE}${path}`);
-    const data = await res.json();
-    document.getElementById("output").textContent = JSON.stringify(data, null, 2);
+    try {
+      const res = await fetch(`${API_BASE}${path}`);
+      const data = await res.json();
+      document.getElementById("output").textContent = JSON.stringify(data, null, 2);
+    } catch (err) {
+      document.getElementById("output").textContent = "Error refrescando token";
+    }
   }
-  
-  async function lanzarCampaña() {
+
+  async function asignarAudienciaDelivery() {
     const client = document.getElementById("client").value || "owner";
-    const sessionId = Date.now().toString(); // ID único por campaña
+    const objetivo = document.getElementById("objetivo").value;
     const postLink = document.getElementById("postLink").value;
 
     if (!postLink) {
-      alert("Debes pegar el link del post de Instagram");
+      alert("Debes pegar el link del post activo");
       return;
     }
 
+    const sessionId = "sess_" + Date.now();
+
     try {
-      // 1. Construir audiencia
+      // 1) Construir audiencia
       const audRes = await fetch(`${API_BASE}/api/${client}/audience/build`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ session_id: sessionId })
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ session_id: sessionId, constraints: { objetivo } })
       });
       const audiencia = await audRes.json();
 
-      // 2. Asignar delivery
-      const delivRes = await fetch(`${API_BASE}/api/${client}/delivery/assign`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      // 2) Asignar delivery
+      const delRes = await fetch(`${API_BASE}/api/${client}/delivery/assign`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           session_id: sessionId,
           audience_id: audiencia.audience_id,
@@ -103,14 +110,15 @@
           window_hours: 24
         })
       });
-      const entrega = await delivRes.json();
+      const entrega = await delRes.json();
 
-      // Mostrar resultados en pantalla
+      // Mostrar resultados
       document.getElementById("output").textContent =
-        JSON.stringify({ audiencia, entrega }, null, 2);
+        "Audiencia:\n" + JSON.stringify(audiencia, null, 2) +
+        "\n\nDelivery:\n" + JSON.stringify(entrega, null, 2);
 
     } catch (err) {
-      console.error("Error en lanzarCampaña:", err);
+      console.error("Error en asignarAudienciaDelivery:", err);
       document.getElementById("output").textContent = "Error lanzando campaña";
     }
   }
@@ -120,9 +128,13 @@
     const mediaId = prompt("Ingresa el mediaId del post publicado:");
     if (!mediaId) return;
 
-    const res = await fetch(`${API_BASE}/api/${client}/instagram/insights/${mediaId}`);
-    const data = await res.json();
-    document.getElementById("output").textContent = JSON.stringify(data, null, 2);
+    try {
+      const res = await fetch(`${API_BASE}/api/${client}/instagram/insights/${mediaId}`);
+      const data = await res.json();
+      document.getElementById("output").textContent = JSON.stringify(data, null, 2);
+    } catch (err) {
+      document.getElementById("output").textContent = "Error obteniendo estadísticas";
+    }
   }
 
   function analizarObjetivo() {
